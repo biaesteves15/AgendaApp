@@ -1,0 +1,55 @@
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: agendaapp-mongodb
+    restart: always
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_DATABASE: bd-agenda
+      MONGO_INITDB_ROOT_USERNAME: coti
+      MONGO_INITDB_ROOT_PASSWORD: coti
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - agendaapp-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: agendaapp-mongo-express
+    restart: always
+    ports:
+      - "5054:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://coti:coti@mongodb:27017/?authSource=admin
+      ME_CONFIG_BASICAUTH_ENABLED: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: coti
+      ME_CONFIG_BASICAUTH_PASSWORD: coti
+    volumes:
+      - mongo_express_data:/data
+    networks:
+      - agendaapp-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/status').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mongodb_data:
+  mongo_express_data:
+
+networks:
+  agendaapp-network:
+    driver: bridge
